@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traceline — AI Code Understanding &amp; Bug Fix Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+/* ============================================================
+   TRACELINE — DESIGN TOKENS
+   Signature element: "The Gutter" — a colored vertical rail +
+   monospace index, borrowed from the code-editor line gutter,
+   used consistently across nav, lists, and code windows.
+   ============================================================ */
+:root{
+  /* -- surfaces -- */
+  --paper:      #EFF2F6;
+  --paper-2:    #E6EAF0;
+  --surface:    #FFFFFF;
+  --surface-2:  #F7F9FB;
+  --line:       #DCE2E9;
+  --line-soft:  #E9EDF2;
+
+  /* -- ink -- */
+  --ink:        #121821;
+  --ink-soft:   #5B6675;
+  --ink-faint:  #8B94A3;
+  --ink-on-dark: #E7ECF3;
+  --ink-on-dark-soft: #93A1B5;
+
+  /* -- code surfaces -- */
+  --code-bg:    #101722;
+  --code-bg-2:  #182233;
+  --code-line:  #263047;
+  --code-text:  #C9D3E0;
+  --code-text-dim: #6E7A8F;
+
+  /* -- signal colors (the gutter palette) -- */
+  --amber:      #E2A03F;
+  --amber-soft: #FBF0DC;
+  --amber-ink:  #7A5115;
+
+  --teal:       #1F9E8B;
+  --teal-soft:  #DDF3EF;
+  --teal-ink:   #0E5C4F;
+
+  --rose:       #D8595B;
+  --rose-soft:  #FBE4E4;
+  --rose-ink:   #85292B;
+
+  --blue:       #3E7CB8;
+  --blue-soft:  #E4EEF7;
+  --blue-ink:   #24537D;
+
+  --violet:     #7A6BC9;
+  --violet-soft: #EBE8F8;
+
+  /* -- type -- */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  /* -- shape -- */
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 16px;
+  --shadow-s: 0 1px 2px rgba(18,24,33,0.06);
+  --shadow-m: 0 4px 16px rgba(18,24,33,0.08);
+  --shadow-l: 0 12px 32px rgba(18,24,33,0.14);
+
+  --sidebar-w: 236px;
+  --sidebar-w-collapsed: 72px;
+}
+
+*,*::before,*::after{ box-sizing: border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  line-height: 1.5;
+}
+h1,h2,h3,h4{ font-family: var(--font-display); margin:0; letter-spacing:-0.01em; }
+p{ margin:0; }
+a{ color: inherit; text-decoration:none; }
+button{ font-family: var(--font-body); cursor:pointer; }
+input,select,textarea{ font-family: var(--font-body); }
+ul{ margin:0; padding:0; list-style:none; }
+code, .mono{ font-family: var(--font-mono); }
+img{ max-width:100%; display:block; }
+
+::selection{ background: var(--amber-soft); color: var(--amber-ink); }
+
+/* focus visibility (a11y floor) */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, [tabindex]:focus-visible{
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
+.hidden{ display:none !important; }
+.sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding: 9px 16px; border-radius: var(--radius-s); border:1px solid transparent;
+  font-size:13.5px; font-weight:600; font-family: var(--font-body);
+  transition: background .15s ease, border-color .15s ease, transform .1s ease, color .15s ease;
+  white-space:nowrap;
+}
+.btn:active{ transform: translateY(1px); }
+.btn i{ font-size: 12.5px; }
+.btn-primary{ background: var(--ink); color:#fff; }
+.btn-primary:hover{ background:#232d3a; }
+.btn-accent{ background: var(--blue); color:#fff; }
+.btn-accent:hover{ background:#356ba3; }
+.btn-teal{ background: var(--teal); color:#fff; }
+.btn-teal:hover{ background:#188876; }
+.btn-secondary{ background: var(--surface); color: var(--ink); border-color: var(--line); }
+.btn-secondary:hover{ background: var(--surface-2); }
+.btn-ghost{ background:transparent; color: var(--ink-soft); }
+.btn-ghost:hover{ background: var(--surface-2); color: var(--ink); }
+.btn-danger{ background: var(--surface); color: var(--rose-ink); border-color: var(--rose); }
+.btn-danger:hover{ background: var(--rose-soft); }
+.btn-sm{ padding:6px 12px; font-size:12.5px; }
+.btn-lg{ padding:13px 24px; font-size:15px; border-radius: var(--radius-m); }
+.btn-block{ width:100%; }
+.btn[disabled]{ opacity:.5; cursor:not-allowed; }
+.btn-icon{ width:34px; height:34px; padding:0; border-radius: var(--radius-s); }
+
+/* ============================================================
+   BADGES / PILLS / TAGS
+   ============================================================ */
+.badge{
+  display:inline-flex; align-items:center; gap:5px;
+  padding: 3px 9px; border-radius: 100px; font-size: 11.5px; font-weight:600;
+  font-family: var(--font-mono); letter-spacing:.01em; text-transform:uppercase;
+  white-space:nowrap;
+}
+.badge .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+.badge-critical{ background: var(--rose-soft); color: var(--rose-ink); }
+.badge-high{ background: var(--amber-soft); color: var(--amber-ink); }
+.badge-medium{ background: var(--blue-soft); color: var(--blue-ink); }
+.badge-low{ background: var(--surface-2); color: var(--ink-soft); }
+.badge-fixed{ background: var(--teal-soft); color: var(--teal-ink); }
+.badge-open{ background: var(--rose-soft); color: var(--rose-ink); }
+.badge-progress{ background: var(--amber-soft); color: var(--amber-ink); }
+.badge-neutral{ background: var(--surface-2); color: var(--ink-soft); }
+
+.tag{
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 4px 10px; border-radius: var(--radius-s);
+  background: var(--surface-2); border:1px solid var(--line-soft);
+  font-size:12px; color: var(--ink-soft); font-weight:500;
+}
+
+/* ============================================================
+   THE GUTTER — signature component
+   A colored rail + monospace index used on list rows, nav items,
+   and code line highlights alike.
+   ============================================================ */
+.gutter-row{
+  position:relative; display:flex; align-items:center; gap:14px;
+  padding: 14px 16px 14px 18px; border-radius: var(--radius-m);
+  background: var(--surface); border:1px solid var(--line-soft);
+  cursor:pointer; transition: box-shadow .15s ease, border-color .15s ease, transform .1s ease;
+}
+.gutter-row:hover{ box-shadow: var(--shadow-s); border-color: var(--line); transform: translateX(2px); }
+.gutter-row::before{
+  content:""; position:absolute; left:0; top:8px; bottom:8px; width:4px; border-radius:4px;
+  background: var(--ink-faint);
+}
+.gutter-row.sev-critical::before{ background: var(--rose); }
+.gutter-row.sev-high::before{ background: var(--amber); }
+.gutter-row.sev-medium::before{ background: var(--blue); }
+.gutter-row.sev-low::before{ background: var(--ink-faint); }
+.gutter-row.sev-fixed::before{ background: var(--teal); }
+.gutter-index{
+  font-family: var(--font-mono); font-size:12px; color: var(--ink-faint);
+  min-width:34px; text-align:right; flex-shrink:0;
+}
+
+/* ============================================================
+   CARDS / PANELS
+   ============================================================ */
+.card{
+  background: var(--surface); border:1px solid var(--line-soft); border-radius: var(--radius-l);
+  padding: 22px;
+}
+.card-flush{ padding:0; overflow:hidden; }
+.card-title-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.card-title-row h3{ font-size:15px; }
+.panel-label{
+  font-family: var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+  color: var(--ink-faint); font-weight:600;
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.tbl{ width:100%; border-collapse:collapse; }
+.tbl th{
+  text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+  color: var(--ink-faint); font-weight:600; padding: 0 14px 10px; border-bottom:1px solid var(--line-soft);
+}
+.tbl td{ padding: 13px 14px; border-bottom:1px solid var(--line-soft); font-size:13.5px; vertical-align:middle; }
+.tbl tr:last-child td{ border-bottom:none; }
+.tbl tr.clickable{ cursor:pointer; transition: background .12s ease; }
+.tbl tr.clickable:hover{ background: var(--surface-2); }
+
+/* ============================================================
+   CODE WINDOW
+   ============================================================ */
+.code-window{
+  background: var(--code-bg); border-radius: var(--radius-m); overflow:hidden;
+  border:1px solid var(--code-line); box-shadow: var(--shadow-m);
+}
+.code-window-bar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 10px 16px; background: var(--code-bg-2); border-bottom:1px solid var(--code-line);
+}
+.code-window-bar .path{
+  font-family: var(--font-mono); font-size:12.5px; color: var(--ink-on-dark-soft);
+  display:flex; align-items:center; gap:8px;
+}
+.code-window-bar .dots{ display:flex; gap:6px; }
+.code-window-bar .dots span{ width:9px; height:9px; border-radius:50%; }
+.code-window-bar .dots span:nth-child(1){ background:#D8595B; }
+.code-window-bar .dots span:nth-child(2){ background:#E2A03F; }
+.code-window-bar .dots span:nth-child(3){ background:#1F9E8B; }
+.code-window-actions{ display:flex; gap:6px; }
+.code-window-actions button{
+  background:transparent; border:none; color: var(--ink-on-dark-soft); width:28px; height:28px;
+  border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:12.5px;
+}
+.code-window-actions button:hover{ background: rgba(255,255,255,0.08); color: var(--ink-on-dark); }
+
+.code-body{ overflow-x:auto; padding: 6px 0; }
+.code-line{ display:flex; font-family: var(--font-mono); font-size:12.8px; line-height:22px; white-space:pre; }
+.code-line .ln{
+  width:44px; flex-shrink:0; text-align:right; padding-right:16px; color: var(--code-text-dim);
+  user-select:none; border-right: 1px solid var(--code-line); margin-right:14px;
+}
+.code-line .code-txt{ color: var(--code-text); padding-right:16px; }
+.code-line.hl{ background: rgba(226,160,63,0.14); box-shadow: inset 3px 0 0 var(--amber); }
+.code-line.hl .ln{ color: var(--amber); font-weight:600; }
+.code-line.hl-rose{ background: rgba(216,89,91,0.14); box-shadow: inset 3px 0 0 var(--rose); }
+.code-line.hl-rose .ln{ color: var(--rose); font-weight:600; }
+
+/* token-ish coloring, applied via spans */
+.tk-kw{ color:#7FB0E0; } .tk-fn{ color:#E2C08D; } .tk-str{ color:#B3D89C; }
+.tk-com{ color: var(--code-text-dim); font-style:italic; } .tk-type{ color:#C9A0E0; }
+.tk-prop{ color:#9FCBD9; } .tk-num{ color:#E0A87E; }
+
+.annotation{
+  margin: 2px 12px 10px 58px; padding:10px 14px; background: rgba(226,160,63,0.1);
+  border:1px dashed rgba(226,160,63,.5); border-radius: var(--radius-s);
+  font-size:12.5px; color: var(--amber); display:flex; gap:8px; align-items:flex-start;
+  font-family: var(--font-body);
+}
+.annotation i{ margin-top:2px; }
+
+/* ============================================================
+   DIFF VIEWER
+   ============================================================ */
+.diff-file{ border:1px solid var(--line-soft); border-radius: var(--radius-m); overflow:hidden; margin-bottom:14px; background: var(--surface); }
+.diff-file-head{
+  display:flex; align-items:center; justify-content:space-between; padding: 12px 16px;
+  background: var(--surface-2); border-bottom:1px solid var(--line-soft); cursor:pointer;
+}
+.diff-file-head .fp{ font-family: var(--font-mono); font-size:13px; font-weight:600; display:flex; align-items:center; gap:10px; }
+.diff-file-stats{ font-family: var(--font-mono); font-size:12px; display:flex; gap:10px; align-items:center; }
+.diff-file-stats .add{ color: var(--teal-ink); font-weight:600; }
+.diff-file-stats .del{ color: var(--rose-ink); font-weight:600; }
+.diff-body{ background: var(--code-bg); }
+.diff-line{ display:flex; font-family: var(--font-mono); font-size:12.6px; line-height:21px; white-space:pre; }
+.diff-line .ln{ width:38px; flex-shrink:0; text-align:right; padding-right:10px; color: var(--code-text-dim); user-select:none; }
+.diff-line .marker{ width:20px; flex-shrink:0; text-align:center; user-select:none; }
+.diff-line .code-txt{ padding-right:16px; color: var(--code-text); flex:1; }
+.diff-line.add{ background: rgba(31,158,139,0.14); }
+.diff-line.add .marker{ color: var(--teal); font-weight:700; }
+.diff-line.del{ background: rgba(216,89,91,0.14); }
+.diff-line.del .marker{ color: var(--rose); font-weight:700; }
+.diff-line.ctx .code-txt{ color: var(--code-text-dim); }
+.diff-hunk{ padding:6px 16px; color: var(--blue); background: rgba(62,124,184,.12); font-family: var(--font-mono); font-size:11.5px; }
+
+/* ============================================================
+   FORMS
+   ============================================================ */
+.field{ display:flex; flex-direction:column; gap:7px; margin-bottom:16px; }
+.field label{ font-size:12.5px; font-weight:600; color: var(--ink-soft); }
+.field .hint{ font-size:12px; color: var(--ink-faint); font-weight:400; }
+.input, .select, .textarea{
+  padding: 10px 13px; border:1px solid var(--line); border-radius: var(--radius-s);
+  background: var(--surface); font-size:13.5px; color: var(--ink); width:100%;
+}
+.input:focus, .select:focus, .textarea:focus{ border-color: var(--blue); }
+.textarea{ resize:vertical; min-height:80px; font-family: var(--font-mono); }
+.search-input-wrap{ position:relative; }
+.search-input-wrap i{ position:absolute; left:13px; top:50%; transform:translateY(-50%); color: var(--ink-faint); font-size:12.5px; }
+.search-input-wrap .input{ padding-left:34px; }
+
+.toggle{ position:relative; width:40px; height:23px; flex-shrink:0; }
+.toggle input{ opacity:0; width:100%; height:100%; position:absolute; margin:0; cursor:pointer; z-index:2; }
+.toggle .track{ position:absolute; inset:0; background: var(--line); border-radius:100px; transition: background .15s ease; }
+.toggle .thumb{ position:absolute; top:3px; left:3px; width:17px; height:17px; border-radius:50%; background:#fff; box-shadow: var(--shadow-s); transition: transform .15s ease; }
+.toggle input:checked + .track{ background: var(--teal); }
+.toggle input:checked ~ .thumb{ transform: translateX(17px); }
+
+.checkbox-row{ display:flex; align-items:center; gap:10px; }
+.checkbox-row input[type=checkbox]{ width:17px; height:17px; accent-color: var(--blue); }
+.radio-card{
+  display:flex; gap:12px; padding:14px; border:1.5px solid var(--line); border-radius: var(--radius-m);
+  cursor:pointer; transition: border-color .15s ease, background .15s ease;
+}
+.radio-card:hover{ border-color: var(--ink-faint); }
+.radio-card.selected{ border-color: var(--blue); background: var(--blue-soft); }
+.radio-card input{ margin-top:3px; accent-color: var(--blue); }
+
+/* ============================================================
+   TABS
+   ============================================================ */
+.tabbar{ display:flex; gap:4px; border-bottom:1px solid var(--line-soft); margin-bottom:20px; }
+.tab-btn{
+  background:transparent; border:none; padding:10px 6px; margin-right:18px; font-size:13.5px; font-weight:600;
+  color: var(--ink-faint); border-bottom:2px solid transparent; margin-bottom:-1px;
+}
+.tab-btn:hover{ color: var(--ink-soft); }
+.tab-btn.active{ color: var(--ink); border-bottom-color: var(--ink); }
+.tab-pane{ display:none; }
+.tab-pane.active{ display:block; }
+
+.pill-toggle{ display:inline-flex; padding:3px; background: var(--surface-2); border-radius:100px; border:1px solid var(--line-soft); }
+.pill-toggle button{
+  background:transparent; border:none; padding:7px 15px; border-radius:100px; font-size:12.5px; font-weight:600;
+  color: var(--ink-faint);
+}
+.pill-toggle button.active{ background: var(--ink); color:#fff; }
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+#appRoot{ display:flex; height:100vh; overflow:hidden; }
+
+.sidebar{
+  width: var(--sidebar-w); flex-shrink:0; background: var(--code-bg); color: var(--ink-on-dark);
+  display:flex; flex-direction:column; transition: width .18s ease; overflow:hidden;
+}
+.sidebar.collapsed{ width: var(--sidebar-w-collapsed); }
+.sidebar-brand{
+  display:flex; align-items:center; gap:10px; padding: 20px 18px; cursor:pointer;
+  border-bottom:1px solid var(--code-line); flex-shrink:0;
+}
+.brand-mark{
+  width:30px; height:30px; border-radius:8px; background: linear-gradient(155deg, var(--amber), var(--teal));
+  display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:700;
+  color:#101722; font-size:14px; flex-shrink:0;
+}
+.brand-name{ font-family: var(--font-display); font-weight:700; font-size:16px; white-space:nowrap; }
+.sidebar.collapsed .brand-name, .sidebar.collapsed .navlabel, .sidebar.collapsed .sidebar-foot-text{ display:none; }
+
+.sidebar-nav{ flex:1; padding: 14px 12px; display:flex; flex-direction:column; gap:2px; overflow-y:auto; }
+.navlink{
+  display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius: var(--radius-s);
+  color: var(--ink-on-dark-soft); font-weight:600; font-size:13.5px; position:relative;
+  border-left:3px solid transparent;
+}
+.navlink i{ width:16px; text-align:center; font-size:14px; }
+.navlink:hover{ background: rgba(255,255,255,0.05); color: var(--ink-on-dark); }
+.navlink.active{ background: rgba(226,160,63,0.12); color:#fff; border-left-color: var(--amber); }
+.nav-section-label{ font-family: var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.09em; color:#4E5A70; padding: 16px 12px 6px; }
+
+.sidebar-foot{ padding:14px; border-top:1px solid var(--code-line); flex-shrink:0; }
+.sidebar-user{ display:flex; align-items:center; gap:10px; padding:8px; border-radius: var(--radius-s); position:relative; }
+.sidebar-user:hover{ background: rgba(255,255,255,0.05); }
+.avatar{
+  width:32px; height:32px; border-radius:50%; background: var(--blue); color:#fff; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12.5px; font-family:var(--font-display);
+}
+.sidebar-foot-text{ overflow:hidden; }
+.sidebar-foot-text .name{ font-size:13px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sidebar-foot-text .role{ font-size:11.5px; color: var(--ink-on-dark-soft); white-space:nowrap; }
+
+.collapse-btn{
+  background:transparent; border:none; color: var(--ink-on-dark-soft); width:100%; padding:8px;
+  display:flex; align-items:center; justify-content:center; border-radius:6px; margin-top:4px;
+}
+.collapse-btn:hover{ background: rgba(255,255,255,0.06); color:#fff; }
+
+.main-col{ flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+.topbar{
+  height:62px; flex-shrink:0; background: var(--surface); border-bottom:1px solid var(--line-soft);
+  display:flex; align-items:center; justify-content:space-between; padding: 0 24px; gap:20px;
+}
+.breadcrumb{ display:flex; align-items:center; gap:8px; font-size:13px; color: var(--ink-faint); font-weight:500; min-width:0; }
+.breadcrumb .seg.current{ color: var(--ink); font-weight:700; }
+.breadcrumb .seg:hover{ color: var(--ink); cursor:pointer; }
+.breadcrumb i{ font-size:9px; }
+.topbar-right{ display:flex; align-items:center; gap:14px; flex-shrink:0; }
+.icon-btn{
+  width:36px; height:36px; border-radius: var(--radius-s); border:1px solid var(--line-soft); background: var(--surface);
+  display:flex; align-items:center; justify-content:center; color: var(--ink-soft); position:relative; flex-shrink:0;
+}
+.icon-btn:hover{ background: var(--surface-2); }
+.icon-btn .ping{ position:absolute; top:6px; right:7px; width:7px; height:7px; border-radius:50%; background: var(--rose); border:2px solid var(--surface); }
+.topbar-search{ width:280px; }
+.topbar-search .input{ background: var(--surface-2); border-color:transparent; }
+
+.page-container{ flex:1; overflow-y:auto; padding: 28px 32px 60px; }
+.page-header{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; gap:20px; flex-wrap:wrap; }
+.page-header h1{ font-size:24px; margin-bottom:6px; }
+.page-header .sub{ color: var(--ink-soft); font-size:13.5px; max-width:520px; }
+.page-header-actions{ display:flex; gap:10px; flex-shrink:0; }
+
+.grid{ display:grid; gap:18px; }
+.grid-2{ grid-template-columns:1fr 1fr; }
+.grid-3{ grid-template-columns:repeat(3,1fr); }
+.grid-4{ grid-template-columns:repeat(4,1fr); }
+.stack{ display:flex; flex-direction:column; gap:14px; }
+
+/* ============================================================
+   STAT TILES
+   ============================================================ */
+.stat-tile{ background: var(--surface); border:1px solid var(--line-soft); border-radius: var(--radius-l); padding:20px; position:relative; overflow:hidden; }
+.stat-tile .top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.stat-tile .icon-badge{ width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:14px; }
+.stat-tile .value{ font-family: var(--font-display); font-size:28px; font-weight:700; line-height:1; }
+.stat-tile .label{ font-size:12.5px; color: var(--ink-soft); margin-top:6px; }
+.stat-tile .delta{ font-size:11.5px; font-weight:600; display:flex; align-items:center; gap:4px; }
+.delta.up{ color: var(--teal-ink); } .delta.down{ color: var(--rose-ink); } .delta.flat{ color: var(--ink-faint); }
+
+/* ============================================================
+   PROGRESS
+   ============================================================ */
+.progress-bar{ height:8px; background: var(--surface-2); border-radius:100px; overflow:hidden; border:1px solid var(--line-soft); }
+.progress-bar .fill{ height:100%; border-radius:100px; background: var(--teal); transition: width .4s ease; }
+.progress-bar.amber .fill{ background: var(--amber); }
+.progress-bar.blue .fill{ background: var(--blue); }
+.health-ring{ width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:700; font-size:12px; flex-shrink:0; }
+
+/* ============================================================
+   FILE TREE
+   ============================================================ */
+.file-tree{ font-size:13px; }
+.tree-folder{ margin-bottom:2px; }
+.tree-folder-label{ display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:6px; font-weight:600; color: var(--ink-soft); cursor:pointer; }
+.tree-folder-label:hover{ background: var(--surface-2); }
+.tree-folder-label i.fa-chevron-right{ font-size:9px; transition: transform .15s ease; color: var(--ink-faint); }
+.tree-folder.open > .tree-folder-label i.fa-chevron-right{ transform: rotate(90deg); }
+.tree-children{ margin-left:18px; padding-left:8px; border-left:1px solid var(--line-soft); display:none; }
+.tree-folder.open > .tree-children{ display:block; }
+.tree-file{ display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:6px; color: var(--ink-soft); cursor:pointer; position:relative; }
+.tree-file:hover{ background: var(--surface-2); }
+.tree-file.active{ background: var(--blue-soft); color: var(--blue-ink); font-weight:600; }
+.tree-file .fdot{ width:6px; height:6px; border-radius:50%; margin-left:auto; flex-shrink:0; }
+.tree-file i{ font-size:12px; color: var(--ink-faint); width:13px; text-align:center; }
+.tree-file.active i{ color: var(--blue); }
+
+/* ============================================================
+   TOASTS / MODAL
+   ============================================================ */
+#toastHost{ position:fixed; bottom:24px; right:24px; z-index:900; display:flex; flex-direction:column; gap:10px; }
+.toast{
+  background: var(--ink); color:#fff; padding:13px 18px; border-radius: var(--radius-m); box-shadow: var(--shadow-l);
+  font-size:13px; font-weight:600; display:flex; align-items:center; gap:10px; animation: toastIn .2s ease;
+  max-width:320px;
+}
+.toast i{ color: var(--teal); }
+@keyframes toastIn{ from{ opacity:0; transform: translateY(8px);} to{ opacity:1; transform:translateY(0);} }
+
+.modal-overlay{
+  position:fixed; inset:0; background: rgba(16,23,34,0.55); z-index:950; display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.modal{ background: var(--surface); border-radius: var(--radius-l); width:100%; max-width:480px; box-shadow: var(--shadow-l); overflow:hidden; }
+.modal-head{ padding:20px 24px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; justify-content:space-between; }
+.modal-body{ padding:24px; }
+.modal-foot{ padding:16px 24px; border-top:1px solid var(--line-soft); display:flex; justify-content:flex-end; gap:10px; }
+
+.dropdown-menu{
+  position:absolute; background: var(--surface); border:1px solid var(--line-soft); border-radius: var(--radius-m);
+  box-shadow: var(--shadow-l); padding:6px; min-width:190px; z-index:80;
+}
+.dropdown-menu a, .dropdown-menu button{
+  display:flex; align-items:center; gap:10px; width:100%; padding:9px 11px; border-radius:7px; font-size:13px;
+  font-weight:500; color: var(--ink); background:transparent; border:none; text-align:left;
+}
+.dropdown-menu a:hover, .dropdown-menu button:hover{ background: var(--surface-2); }
+.dropdown-menu .divider{ height:1px; background: var(--line-soft); margin:6px 2px; }
+
+/* ============================================================
+   LANDING PAGE
+   ============================================================ */
+#landingRoot{ background: var(--paper); min-height:100vh; }
+.lnav{
+  display:flex; align-items:center; justify-content:space-between; padding: 18px 48px;
+  position:sticky; top:0; background: rgba(239,242,246,0.86); backdrop-filter: blur(8px); z-index:60;
+  border-bottom:1px solid transparent;
+}
+.lnav.scrolled{ border-bottom-color: var(--line-soft); }
+.lnav-links{ display:flex; align-items:center; gap:34px; font-size:13.5px; font-weight:600; color: var(--ink-soft); }
+.lnav-links a:hover{ color: var(--ink); }
+.lnav-cta{ display:flex; gap:10px; align-items:center; }
+
+.section{ padding: 96px 48px; max-width:1240px; margin:0 auto; }
+.section-tight{ padding-top:48px; padding-bottom:48px; }
+.eyebrow{
+  font-family: var(--font-mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.1em;
+  color: var(--ink-faint); font-weight:600; display:flex; align-items:center; gap:8px; margin-bottom:16px;
+}
+.eyebrow::before{ content:""; width:16px; height:1.5px; background: var(--amber); }
+
+.hero{ display:grid; grid-template-columns: 1.05fr 1fr; gap:56px; align-items:center; padding: 56px 48px 40px; max-width:1240px; margin:0 auto; }
+.hero h1{ font-size:52px; line-height:1.06; margin-bottom:20px; letter-spacing:-0.02em; }
+.hero h1 .accent{ color: var(--amber); position:relative; }
+.hero .lede{ font-size:16.5px; color: var(--ink-soft); max-width:480px; margin-bottom:30px; line-height:1.55; }
+.hero-cta-row{ display:flex; gap:12px; align-items:center; margin-bottom:28px; flex-wrap:wrap; }
+.hero-meta{ display:flex; gap:22px; font-size:12.5px; color: var(--ink-faint); }
+.hero-meta span{ display:flex; align-items:center; gap:7px; }
+.hero-meta i{ color: var(--teal); }
+
+.hero-visual{ position:relative; }
+.hero-visual .code-window{ transform: rotate(-0.6deg); }
+.hero-callout{
+  position:absolute; right:-14px; top:64px; background: var(--surface); border:1px solid var(--line);
+  border-radius: var(--radius-m); padding:12px 14px; box-shadow: var(--shadow-l); max-width:225px;
+  font-size:12px; color: var(--ink-soft); transform: rotate(1.2deg);
+}
+.hero-callout .htitle{ font-weight:700; color: var(--ink); font-size:12.5px; margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+.hero-callout .htitle i{ color: var(--amber); }
+
+.pipeline-strip{ display:flex; border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
+.pipeline-step{ flex:1; padding: 26px 22px; border-right:1px solid var(--line-soft); position:relative; }
+.pipeline-step:last-child{ border-right:none; }
+.pipeline-step .tag-line{ font-family: var(--font-mono); font-size:11px; color: var(--amber); margin-bottom:10px; font-weight:600; }
+.pipeline-step h4{ font-size:14.5px; margin-bottom:6px; }
+.pipeline-step p{ font-size:12.5px; color: var(--ink-soft); line-height:1.5; }
+.pipeline-step i.arrow{ position:absolute; right:-9px; top:30px; color: var(--ink-faint); font-size:12px; z-index:2; background:var(--paper); }
+
+.section-head{ max-width:620px; margin-bottom:52px; }
+.section-head h2{ font-size:34px; margin-bottom:14px; letter-spacing:-0.015em; }
+.section-head p{ color: var(--ink-soft); font-size:15px; line-height:1.55; }
+
+.feature-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.feature-card{ background: var(--surface); border:1px solid var(--line-soft); border-radius: var(--radius-l); padding:26px; transition: transform .15s ease, box-shadow .15s ease; }
+.feature-card:hover{ transform: translateY(-3px); box-shadow: var(--shadow-m); }
+.feature-card .ic{ width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:18px; font-size:15px; }
+.feature-card h4{ font-size:16px; margin-bottom:8px; }
+.feature-card p{ font-size:13px; color: var(--ink-soft); line-height:1.55; }
+
+.persona-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.persona-card{ border-radius: var(--radius-l); padding:24px; border:1px solid var(--line-soft); background: var(--surface); }
+.persona-card .pnum{ font-family: var(--font-mono); font-size:11px; color: var(--ink-faint); margin-bottom:16px; }
+.persona-card h4{ font-size:15.5px; margin-bottom:8px; }
+.persona-card p{ font-size:12.5px; color: var(--ink-soft); line-height:1.5; }
+
+.split{ display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center; }
+.mini-diff-card{ background: var(--code-bg); border-radius: var(--radius-l); padding:4px; box-shadow: var(--shadow-l); }
+
+.quote-band{ background: var(--code-bg); border-radius: var(--radius-l); padding:56px; color: var(--ink-on-dark); }
+.quote-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:36px; }
+.quote-grid blockquote{ font-size:14.5px; line-height:1.6; margin-bottom:18px; color: var(--ink-on-dark); }
+.quote-grid .who{ font-size:12.5px; color: var(--ink-on-dark-soft); }
+.quote-grid .who b{ color:#fff; }
+
+.cta-band{ text-align:center; padding: 80px 48px; }
+.cta-band h2{ font-size:36px; margin-bottom:16px; }
+.cta-band p{ color: var(--ink-soft); margin-bottom:30px; font-size:15px; }
+
+.lfoot{ border-top:1px solid var(--line-soft); padding: 44px 48px; display:flex; justify-content:space-between; align-items:flex-start; }
+.lfoot-cols{ display:flex; gap:64px; }
+.lfoot-col h5{ font-family: var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.08em; color: var(--ink-faint); margin-bottom:14px; }
+.lfoot-col a{ display:block; font-size:13px; color: var(--ink-soft); margin-bottom:10px; }
+.lfoot-col a:hover{ color: var(--ink); }
+.lfoot-brand p{ font-size:12.5px; color: var(--ink-faint); max-width:220px; margin-top:10px; }
+
+@media (max-width: 980px){
+  .hero{ grid-template-columns:1fr; }
+  .grid-2, .grid-3, .grid-4, .feature-grid, .persona-grid, .quote-grid{ grid-template-columns:1fr 1fr; }
+  .pipeline-strip{ flex-wrap:wrap; }
+  .pipeline-step{ flex:0 0 50%; border-bottom:1px solid var(--line-soft); }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     LANDING PAGE
+     ============================================================ -->
+<div id="landingRoot">
+
+  <nav class="lnav" id="lnav">
+    <div class="sidebar-brand" style="padding:0; border:none; cursor:pointer;" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+      <div class="brand-mark">tl</div>
+      <span class="brand-name" style="color:var(--ink);">Traceline</span>
+    </div>
+    <div class="lnav-links">
+      <a href="javascript:void(0)" onclick="scrollToSection('features')">Product</a>
+      <a href="javascript:void(0)" onclick="scrollToSection('pipeline')">How it works</a>
+      <a href="javascript:void(0)" onclick="scrollToSection('personas')">Who it's for</a>
+      <a href="javascript:void(0)" onclick="enterApp('settings')">Pricing</a>
+    </div>
+    <div class="lnav-cta">
+      <button class="btn btn-ghost btn-sm" onclick="enterApp('dashboard')">Log in</button>
+      <button class="btn btn-primary btn-sm" onclick="enterApp('import')">Import a repository</button>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <div class="eyebrow">AI code understanding &amp; bug fixing</div>
+      <h1>Read less code.<br>Fix more bugs.</h1>
+      <p class="lede">Traceline reads your repository the way a senior engineer would, points to the exact line causing a failure, explains why in plain English, and opens a pull request with the fix.</p>
+      <div class="hero-cta-row">
+        <button class="btn btn-primary btn-lg" onclick="enterApp('import')"><i class="fa-solid fa-arrow-right"></i>&nbsp; Import a repository</button>
+        <button class="btn btn-secondary btn-lg" onclick="enterApp('dashboard')"><i class="fa-regular fa-circle-play"></i>&nbsp; View a live example</button>
+      </div>
+      <div class="hero-meta">
+        <span><i class="fa-solid fa-check"></i> Works with GitHub, GitLab &amp; Bitbucket</span>
+        <span><i class="fa-solid fa-check"></i> Explains every fix in plain English</span>
+        <span><i class="fa-solid fa-check"></i> Opens the pull request for you</span>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="code-window">
+        <div class="code-window-bar">
+          <div class="path"><i class="fa-regular fa-file-code"></i> src/checkout/cartSummary.ts</div>
+          <div class="dots"><span></span><span></span><span></span></div>
+        </div>
+        <div class="code-body">
+          <div class="code-line"><span class="ln">8</span><span class="code-txt"><span class="tk-kw">export function</span> <span class="tk-fn">calculateCartSummary</span>(cart: <span class="tk-type">Cart</span>): <span class="tk-type">CartSummary</span> {</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="code-txt">  <span class="tk-kw">const</span> items = cart.items;</span></div>
+          <div class="code-line"><span class="ln">10</span><span class="code-txt"></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="code-txt">  <span class="tk-kw">const</span> subtotal = items.<span class="tk-fn">reduce</span>((sum, item) =&gt; sum + item.price * item.quantity, <span class="tk-num">0</span>);</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="code-txt"></span></div>
+          <div class="code-line hl"><span class="ln">16</span><span class="code-txt">  <span class="tk-kw">const</span> discount = cart.appliedPromo.percentage</span></div>
+          <div class="code-line hl"><span class="ln">17</span><span class="code-txt">    ? subtotal * (cart.appliedPromo.percentage / <span class="tk-num">100</span>)</span></div>
+          <div class="code-line"><span class="ln">18</span><span class="code-txt">    : <span class="tk-num">0</span>;</span></div>
+          <div class="code-line"><span class="ln">19</span><span class="code-txt"></span></div>
+          <div class="code-line"><span class="ln">20</span><span class="code-txt">  <span class="tk-kw">const</span> shipping = <span class="tk-fn">calculateShipping</span>(items, cart.destination);</span></div>
+        </div>
+        <div class="annotation"><i class="fa-solid fa-bug"></i> appliedPromo is null when no promotion is applied — this throws on every empty-cart checkout.</div>
+      </div>
+      <div class="hero-callout">
+        <div class="htitle"><i class="fa-solid fa-sparkles"></i> Fix ready</div>
+        96% confidence · verified against 3 existing tests · patch opens as PR #248
+      </div>
+    </div>
+  </header>
+
+  <div class="pipeline-strip" id="pipeline">
+    <div class="pipeline-step">
+      <div class="tag-line">// 01 understand</div>
+      <h4>Understand the code</h4>
+      <p>Traceline reads the repository end to end and maps how every file, function, and service connects.</p>
+      <i class="fa-solid fa-arrow-right arrow"></i>
+    </div>
+    <div class="pipeline-step">
+      <div class="tag-line">// 02 locate</div>
+      <h4>Find where it breaks</h4>
+      <p>It traces a failure back to the exact file and line causing it — not just the one that happened to crash.</p>
+      <i class="fa-solid fa-arrow-right arrow"></i>
+    </div>
+    <div class="pipeline-step">
+      <div class="tag-line">// 03 explain</div>
+      <h4>Explain why</h4>
+      <p>Every finding ships with a plain-English reason, so the fix makes sense to the whole team.</p>
+      <i class="fa-solid fa-arrow-right arrow"></i>
+    </div>
+    <div class="pipeline-step">
+      <div class="tag-line">// 04 fix</div>
+      <h4>Suggest a fix</h4>
+      <p>It drafts a working fix, checks it against your existing tests, and offers alternatives when there's more than one good answer.</p>
+      <i class="fa-solid fa-arrow-right arrow"></i>
+    </div>
+    <div class="pipeline-step">
+      <div class="tag-line">// 05 patch</div>
+      <h4>Open the PR</h4>
+      <p>The fix ships as a reviewable pull request, with a description written for your reviewers.</p>
+    </div>
+  </div>
+
+  <section class="section" id="features">
+    <div class="section-head">
+      <div class="eyebrow">What Traceline does</div>
+      <h2>Five things your codebase needs after a bug report.</h2>
+      <p>Each stage stands on its own — jump straight to a patch, or start from a plain-English explanation. Traceline adapts to how deep you want to go.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="ic" style="background:var(--blue-soft); color:var(--blue-ink);"><i class="fa-solid fa-diagram-project"></i></div>
+        <h4>Understand existing code</h4>
+        <p>Get a map of what a file, module, or service actually does — dependencies, data flow, and side effects included.</p>
+      </div>
+      <div class="feature-card">
+        <div class="ic" style="background:var(--rose-soft); color:var(--rose-ink);"><i class="fa-solid fa-crosshairs"></i></div>
+        <h4>Pinpoint the bug</h4>
+        <p>Stop scanning stack traces by hand. Traceline narrows a failure down to the exact function and line.</p>
+      </div>
+      <div class="feature-card">
+        <div class="ic" style="background:var(--amber-soft); color:var(--amber-ink);"><i class="fa-solid fa-message"></i></div>
+        <h4>Explain why it happens</h4>
+        <p>A plain-language root cause, not just an error name — written so anyone on the team can follow it.</p>
+      </div>
+      <div class="feature-card">
+        <div class="ic" style="background:var(--teal-soft); color:var(--teal-ink);"><i class="fa-solid fa-wrench"></i></div>
+        <h4>Suggest the fix</h4>
+        <p>A working patch with a confidence score, plus alternatives when there's a real tradeoff to weigh.</p>
+      </div>
+      <div class="feature-card">
+        <div class="ic" style="background:var(--violet-soft); color:#5B4B9E;"><i class="fa-solid fa-code-pull-request"></i></div>
+        <h4>Generate a patch or PR</h4>
+        <p>Review a real diff, then open it as a pull request with a description already written for your reviewers.</p>
+      </div>
+      <div class="feature-card">
+        <div class="ic" style="background:var(--surface-2); color:var(--ink-soft);"><i class="fa-solid fa-graduation-cap"></i></div>
+        <h4>Plain-English mode</h4>
+        <p>Flip any explanation from technical to plain language — built for teammates who don't read code daily.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="personas" style="padding-top:0;">
+    <div class="section-head">
+      <div class="eyebrow">Built for</div>
+      <h2>Whoever's closest to the bug.</h2>
+    </div>
+    <div class="persona-grid">
+      <div class="persona-card">
+        <div class="pnum">For developers</div>
+        <h4>Skip the archaeology</h4>
+        <p>Open a bug report and land on the exact line, with the surrounding context already summarized.</p>
+      </div>
+      <div class="persona-card">
+        <div class="pnum">For startup teams</div>
+        <h4>Ship without a QA bench</h4>
+        <p>Catch what a dedicated test team would have caught, without hiring one yet.</p>
+      </div>
+      <div class="persona-card">
+        <div class="pnum">For small eng teams</div>
+        <h4>Cover more surface area</h4>
+        <p>Watch every repo continuously, so review time goes to judgment calls, not line-by-line hunting.</p>
+      </div>
+      <div class="persona-card">
+        <div class="pnum">For non-expert users</div>
+        <h4>Follow the fix, not the syntax</h4>
+        <p>Plain-English mode explains what broke and what changed, no programming background required.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section split">
+    <div>
+      <div class="eyebrow">Suggested fixes</div>
+      <h2 style="font-size:30px; margin-bottom:16px; letter-spacing:-0.015em;">See the fix before you commit to it.</h2>
+      <p style="color:var(--ink-soft); font-size:14.5px; line-height:1.6; margin-bottom:24px;">Every suggestion arrives as a real diff, not a vague suggestion. Compare it against the original, read the reasoning, and check it against alternatives before anything touches your branch.</p>
+      <ul class="stack" style="gap:16px;">
+        <li style="display:flex; gap:12px;"><i class="fa-solid fa-square-check" style="color:var(--teal); margin-top:3px;"></i><span><b>Side-by-side diffs</b> — see exactly what changes, line by line.</span></li>
+        <li style="display:flex; gap:12px;"><i class="fa-solid fa-square-check" style="color:var(--teal); margin-top:3px;"></i><span><b>Confidence scoring</b> — know how sure Traceline is before you apply anything.</span></li>
+        <li style="display:flex; gap:12px;"><i class="fa-solid fa-square-check" style="color:var(--teal); margin-top:3px;"></i><span><b>Alternative approaches</b> — a minimal patch or a deeper refactor, your call.</span></li>
+        <li style="display:flex; gap:12px;"><i class="fa-solid fa-square-check" style="color:var(--teal); margin-top:3px;"></i><span><b>Test verification</b> — checked against your existing test suite automatically.</span></li>
+      </ul>
+    </div>
+    <div class="mini-diff-card">
+      <div class="diff-file" style="border:none; margin:0;">
+        <div class="diff-file-head" style="background:var(--code-bg-2); border-color:var(--code-line);">
+          <div class="fp" style="color:var(--ink-on-dark);"><i class="fa-regular fa-file-code"></i> cartSummary.ts</div>
+          <div class="diff-file-stats"><span class="add">+3</span><span class="del">−2</span></div>
+        </div>
+        <div class="diff-body">
+          <div class="diff-hunk">@@ -14,5 +14,6 @@ calculateCartSummary</div>
+          <div class="diff-line ctx"><span class="ln">14</span><span class="marker"> </span><span class="code-txt"></span></div>
+          <div class="diff-line del"><span class="ln">15</span><span class="marker">−</span><span class="code-txt">  const discount = cart.appliedPromo.percentage</span></div>
+          <div class="diff-line del"><span class="ln">16</span><span class="marker">−</span><span class="code-txt">    ? subtotal * (cart.appliedPromo.percentage / 100)</span></div>
+          <div class="diff-line add"><span class="ln">15</span><span class="marker">+</span><span class="code-txt">  const promo = cart.appliedPromo;</span></div>
+          <div class="diff-line add"><span class="ln">16</span><span class="marker">+</span><span class="code-txt">  const discount = promo?.percentage</span></div>
+          <div class="diff-line add"><span class="ln">17</span><span class="marker">+</span><span class="code-txt">    ? subtotal * (promo.percentage / 100)</span></div>
+          <div class="diff-line ctx"><span class="ln">18</span><span class="marker"> </span><span class="code-txt">    : 0;</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="padding:0 48px; max-width:1240px; margin:0 auto;">
+    <div class="quote-band">
+      <div class="quote-grid">
+        <div>
+          <blockquote>"We stopped assigning a person to just triage bug reports. Traceline gets us to the line in under a minute."</blockquote>
+          <div class="who"><b>Engineering Lead</b> · 14-person startup</div>
+        </div>
+        <div>
+          <blockquote>"The plain-English explanations are what sold our PM. She reviews fix descriptions now without pulling in an engineer."</blockquote>
+          <div class="who"><b>Founding Engineer</b> · seed-stage SaaS</div>
+        </div>
+        <div>
+          <blockquote>"I work alone on most of my projects. Having something explain why a fix works, not just apply it, is the whole value for me."</blockquote>
+          <div class="who"><b>Independent Developer</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="cta-band">
+    <h2>Your next bug is already in your codebase.</h2>
+    <p>Import a repository and let Traceline find it before your users do.</p>
+    <button class="btn btn-primary btn-lg" onclick="enterApp('import')"><i class="fa-solid fa-arrow-right"></i>&nbsp; Import a repository</button>
+  </section>
+
+  <footer class="lfoot">
+    <div class="lfoot-brand">
+      <div class="sidebar-brand" style="padding:0; border:none;">
+        <div class="brand-mark">tl</div>
+        <span class="brand-name" style="color:var(--ink);">Traceline</span>
+      </div>
+      <p>AI code understanding and bug fixing for teams who'd rather ship than spelunk.</p>
+    </div>
+    <div class="lfoot-cols">
+      <div class="lfoot-col">
+        <h5>Product</h5>
+        <a href="javascript:void(0)" onclick="enterApp('dashboard')">Dashboard</a>
+        <a href="javascript:void(0)" onclick="enterApp('analysis')">Code analysis</a>
+        <a href="javascript:void(0)" onclick="enterApp('patch')">Patch review</a>
+        <a href="javascript:void(0)" onclick="enterApp('settings')">Settings</a>
+      </div>
+      <div class="lfoot-col">
+        <h5>Company</h5>
+        <a href="javascript:void(0)">About</a>
+        <a href="javascript:void(0)">Careers</a>
+        <a href="javascript:void(0)">Blog</a>
+      </div>
+      <div class="lfoot-col">
+        <h5>Resources</h5>
+        <a href="javascript:void(0)">Documentation</a>
+        <a href="javascript:void(0)">Changelog</a>
+        <a href="javascript:void(0)">Status</a>
+      </div>
+    </div>
+  </footer>
+
+</div>
+<!-- /landingRoot -->
+
+<!-- ============================================================
+     APP SHELL
+     ============================================================ -->
+<div id="appRoot" class="hidden">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand" onclick="goToLanding()">
+      <div class="brand-mark">tl</div>
+      <span class="brand-name">Traceline</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="navlink" data-nav="dashboard" onclick="showPage('dashboard')"><i class="fa-solid fa-gauge-high"></i><span class="navlabel">Dashboard</span></a>
+      <a class="navlink" data-nav="import" onclick="showPage('import')"><i class="fa-solid fa-cloud-arrow-up"></i><span class="navlabel">Import repository</span></a>
+      <a class="navlink" data-nav="analysis" onclick="showPage('analysis')"><i class="fa-solid fa-magnifying-glass-chart"></i><span class="navlabel">Code analysis</span></a>
+      <div class="nav-section-label">Workspace</div>
+      <a class="navlink" data-nav="patch" onclick="showPage('patch')"><i class="fa-solid fa-code-pull-request"></i><span class="navlabel">Patch review</span></a>
+      <a class="navlink" data-nav="settings" onclick="showPage('settings')"><i class="fa-solid fa-gear"></i><span class="navlabel">Settings</span></a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="sidebar-user" onclick="toggleUserMenu(event)" style="position:relative;">
+        <div class="avatar">RK</div>
+        <div class="sidebar-foot-text">
+          <div class="name">Riya Kapoor</div>
+          <div class="role">Admin · checkout-service</div>
+        </div>
+      </div>
+      <button class="collapse-btn" onclick="toggleSidebar()"><i class="fa-solid fa-angles-left" id="collapseIcon"></i></button>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <div class="topbar">
+      <div class="breadcrumb" id="breadcrumb"></div>
+      <div class="topbar-right">
+        <div class="topbar-search">
+          <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input class="input" placeholder="Search files, bugs, PRs…" onkeydown="if(event.key==='Enter'){showToast('No matching results in this demo workspace yet.','fa-solid fa-magnifying-glass')}">
+          </div>
+        </div>
+        <button class="icon-btn" onclick="showToast('3 unread notifications','fa-solid fa-bell')"><i class="fa-regular fa-bell"></i><span class="ping"></span></button>
+        <div style="position:relative;">
+          <div class="avatar" style="cursor:pointer;" onclick="toggleUserMenu(event)">RK</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-container" id="pageContainer">
+
+      <!-- ============================================================
+           DASHBOARD
+           ============================================================ -->
+      <section class="page" id="page-dashboard">
+        <div class="page-header">
+          <div>
+            <h1>Good morning, Riya</h1>
+            <p class="sub">Here's what Traceline found across your workspace since yesterday.</p>
+          </div>
+          <div class="page-header-actions">
+            <button class="btn btn-secondary" onclick="scanAll()"><i class="fa-solid fa-arrows-rotate"></i> Scan all repositories</button>
+            <button class="btn btn-primary" onclick="showPage('import')"><i class="fa-solid fa-plus"></i> Import repository</button>
+          </div>
+        </div>
+
+        <div class="grid grid-4" style="margin-bottom:20px;">
+          <div class="stat-tile">
+            <div class="top">
+              <div class="icon-badge" style="background:var(--blue-soft); color:var(--blue-ink);"><i class="fa-solid fa-code-branch"></i></div>
+              <span class="delta up"><i class="fa-solid fa-arrow-up"></i> 1</span>
+            </div>
+            <div class="value">4</div>
+            <div class="label">Repositories connected</div>
+          </div>
+          <div class="stat-tile">
+            <div class="top">
+              <div class="icon-badge" style="background:var(--rose-soft); color:var(--rose-ink);"><i class="fa-solid fa-bug"></i></div>
+              <span class="delta down"><i class="fa-solid fa-arrow-up"></i> 2</span>
+            </div>
+            <div class="value">5</div>
+            <div class="label">Open bugs</div>
+          </div>
+          <div class="stat-tile">
+            <div class="top">
+              <div class="icon-badge" style="background:var(--teal-soft); color:var(--teal-ink);"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+              <span class="delta flat">this week</span>
+            </div>
+            <div class="value">4</div>
+            <div class="label">Fixes suggested</div>
+          </div>
+          <div class="stat-tile">
+            <div class="top">
+              <div class="icon-badge" style="background:var(--amber-soft); color:var(--amber-ink);"><i class="fa-solid fa-code-pull-request"></i></div>
+              <span class="delta flat">awaiting you</span>
+            </div>
+            <div class="value">2</div>
+            <div class="label">PRs pending review</div>
+          </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns: 1.7fr 1fr; align-items:start; margin-bottom:20px;">
+          <div class="card card-flush">
+            <div style="padding:22px 22px 4px; display:flex; align-items:center; justify-content:space-between;">
+              <h3 style="font-size:15px;">Repositories</h3>
+              <a class="btn btn-ghost btn-sm" onclick="showPage('import')">Manage <i class="fa-solid fa-chevron-right" style="font-size:9px;"></i></a>
+            </div>
+            <table class="tbl" style="margin-top:8px;">
+              <thead><tr><th>Repository</th><th>Language</th><th>Health</th><th>Open issues</th><th>Last scan</th><th></th></tr></thead>
+              <tbody>
+                <tr class="clickable" onclick="showPage('analysis')">
+                  <td><b>checkout-service</b><div style="color:var(--ink-faint); font-size:11.5px;">main</div></td>
+                  <td><span class="tag">TypeScript</span></td>
+                  <td><div class="health-ring" style="background:var(--amber-soft); color:var(--amber-ink);">78</div></td>
+                  <td><span class="badge badge-critical"><span class="dot"></span>1 critical</span> <span class="badge badge-low">1 low</span></td>
+                  <td style="color:var(--ink-faint);">2 hours ago</td>
+                  <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); scanRepo('checkout-service')"><i class="fa-solid fa-arrows-rotate"></i></button></td>
+                </tr>
+                <tr class="clickable" onclick="showPage('analysis')">
+                  <td><b>payments-service</b><div style="color:var(--ink-faint); font-size:11.5px;">main</div></td>
+                  <td><span class="tag">Go</span></td>
+                  <td><div class="health-ring" style="background:var(--rose-soft); color:var(--rose-ink);">58</div></td>
+                  <td><span class="badge badge-critical"><span class="dot"></span>1 critical</span> <span class="badge badge-high">1 high</span></td>
+                  <td style="color:var(--ink-faint);">40 min ago</td>
+                  <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); scanRepo('payments-service')"><i class="fa-solid fa-arrows-rotate"></i></button></td>
+                </tr>
+                <tr class="clickable" onclick="showPage('analysis')">
+                  <td><b>pricing-engine</b><div style="color:var(--ink-faint); font-size:11.5px;">main</div></td>
+                  <td><span class="tag">Python</span></td>
+                  <td><div class="health-ring" style="background:var(--teal-soft); color:var(--teal-ink);">91</div></td>
+                  <td><span class="badge badge-medium"><span class="dot"></span>1 medium</span></td>
+                  <td style="color:var(--ink-faint);">1 day ago</td>
+                  <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); scanRepo('pricing-engine')"><i class="fa-solid fa-arrows-rotate"></i></button></td>
+                </tr>
+                <tr class="clickable" onclick="showPage('analysis')">
+                  <td><b>auth-service</b><div style="color:var(--ink-faint); font-size:11.5px;">main</div></td>
+                  <td><span class="tag">TypeScript</span></td>
+                  <td><div class="health-ring" style="background:var(--teal-soft); color:var(--teal-ink);">96</div></td>
+                  <td><span class="badge badge-neutral">none open</span></td>
+                  <td style="color:var(--ink-faint);">3 days ago</td>
+                  <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); scanRepo('auth-service')"><i class="fa-solid fa-arrows-rotate"></i></button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="card-title-row"><h3>Recent activity</h3></div>
+            <div class="stack" style="gap:18px;">
+              <div style="display:flex; gap:12px;">
+                <div class="icon-badge" style="width:28px;height:28px;border-radius:8px; background:var(--violet-soft); color:#5B4B9E; flex-shrink:0;"><i class="fa-solid fa-code-pull-request" style="font-size:11px;"></i></div>
+                <div><p style="font-size:13px;">Opened <b>PR #248</b> for BUG-102 in checkout-service</p><span style="font-size:11.5px; color:var(--ink-faint);">12 minutes ago</span></div>
+              </div>
+              <div style="display:flex; gap:12px;">
+                <div class="icon-badge" style="width:28px;height:28px;border-radius:8px; background:var(--blue-soft); color:var(--blue-ink); flex-shrink:0;"><i class="fa-solid fa-magnifying-glass" style="font-size:11px;"></i></div>
+                <div><p style="font-size:13px;">Deep scan completed for <b>payments-service</b> — 2 issues found</p><span style="font-size:11.5px; color:var(--ink-faint);">40 minutes ago</span></div>
+              </div>
+              <div style="display:flex; gap:12px;">
+                <div class="icon-badge" style="width:28px;height:28px;border-radius:8px; background:var(--teal-soft); color:var(--teal-ink); flex-shrink:0;"><i class="fa-solid fa-check" style="font-size:11px;"></i></div>
+                <div><p style="font-size:13px;">Fix merged for <b>BUG-088</b> in auth-service</p><span style="font-size:11.5px; color:var(--ink-faint);">Yesterday, 4:52 PM</span></div>
+              </div>
+              <div style="display:flex; gap:12px;">
+                <div class="icon-badge" style="width:28px;height:28px;border-radius:8px; background:var(--blue-soft); color:var(--blue-ink); flex-shrink:0;"><i class="fa-solid fa-magnifying-glass" style="font-size:11px;"></i></div>
+                <div><p style="font-size:13px;">Quick scan completed for <b>pricing-engine</b> — 1 issue found</p><span style="font-size:11.5px; color:var(--ink-faint);">1 day ago</span></div>
+              </div>
+              <div style="display:flex; gap:12px;">
+                <div class="icon-badge" style="width:28px;height:28px;border-radius:8px; background:var(--surface-2); color:var(--ink-soft); flex-shrink:0;"><i class="fa-solid fa-cloud-arrow-up" style="font-size:11px;"></i></div>
+                <div><p style="font-size:13px;"><b>checkout-service</b> imported — initial scan started</p><span style="font-size:11.5px; color:var(--ink-faint);">3 days ago</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns: 1.7fr 1fr; align-items:start;">
+          <div class="card">
+            <div class="card-title-row"><h3>Recent bugs</h3><a class="btn btn-ghost btn-sm">5 open</a></div>
+            <div class="stack" style="gap:10px;">
+              <div class="gutter-row sev-critical" onclick="showBug('BUG-102')">
+                <span class="gutter-index">#102</span>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-weight:600; font-size:13.5px; margin-bottom:3px;">Null reference when cart is empty at checkout</div>
+                  <div style="font-size:12px; color:var(--ink-faint);" class="mono">checkout-service · src/checkout/cartSummary.ts:16</div>
+                </div>
+                <span class="badge badge-critical">Critical</span>
+              </div>
+              <div class="gutter-row sev-critical" onclick="showBug('BUG-130')">
+                <span class="gutter-index">#130</span>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-weight:600; font-size:13.5px; margin-bottom:3px;">Infinite retry loop on webhook signature failure</div>
+                  <div style="font-size:12px; color:var(--ink-faint);" class="mono">payments-service · src/payments/webhookHandler.go:54</div>
+                </div>
+                <span class="badge badge-progress">In progress</span>
+              </div>
+              <div class="gutter-row sev-high" onclick="showBug('BUG-098')">
+                <span class="gutter-index">#098</span>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-weight:600; font-size:13.5px; margin-bottom:3px;">Race condition in inventory decrement during checkout</div>
+                  <div style="font-size:12px; color:var(--ink-faint);" class="mono">payments-service · src/payments/inventoryClient.go:88</div>
+                </div>
+                <span class="badge badge-high">High</span>
+              </div>
+              <div class="gutter-row sev-medium" onclick="showBug('BUG-115')">
+                <span class="gutter-index">#115</span>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-weight:600; font-size:13.5px; margin-bottom:3px;">Incorrect currency rounding on JPY orders</div>
+                  <div style="font-size:12px; color:var(--ink-faint);" class="mono">pricing-engine · pricing/rounding.py:41</div>
+                </div>
+                <span class="badge badge-medium">Medium</span>
+              </div>
+              <div class="gutter-row sev-low" onclick="showBug('BUG-121')">
+                <span class="gutter-index">#121</span>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-weight:600; font-size:13.5px; margin-bottom:3px;">Unused import fails strict lint in CI</div>
+                  <div style="font-size:12px; color:var(--ink-faint);" class="mono">checkout-service · src/checkout/promoValidator.ts:3</div>
+                </div>
+                <span class="badge badge-low">Low</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title-row"><h3>Pending pull requests</h3></div>
+            <div class="stack" style="gap:10px;">
+              <div class="gutter-row sev-fixed" onclick="showPatch('PR-248')">
+                <div style="flex:1; min-width:0;">
+                  <div style="font-weight:600; font-size:13px; margin-bottom:3px;">#248 Fix null reference in cart summary</div>
+                  <div style="font-size:11.5px; color:var(--ink-faint);" class="mono">checkout-service · BUG-102</div>
+                </div>
+                <span class="badge badge-fixed">Ready</span>
+              </div>
+              <div class="gutter-row sev-medium" onclick="showPatch('PR-241')">
+                <div style="flex:1; min-width:0;">
+                  <div style="font-weight:600; font-size:13px; margin-bottom:3px;">#241 Add retry backoff limit to webhook handler</div>
+                  <div style="font-size:11.5px; color:var(--ink-faint);" class="mono">payments-service · BUG-130</div>
+                </div>
+                <span class="badge badge-progress">Checks running</span>
+              </div>
+            </div>
+            <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--line-soft);">
+              <div class="card-title-row" style="margin-bottom:12px;"><h3 style="font-size:14px;">Team</h3></div>
+              <div class="stack" style="gap:12px;">
+                <div style="display:flex; align-items:center; gap:10px;"><div class="avatar" style="background:var(--blue);">RK</div><div><div style="font-size:12.5px; font-weight:600;">Riya Kapoor</div><div style="font-size:11px; color:var(--ink-faint);">Admin</div></div></div>
+                <div style="display:flex; align-items:center; gap:10px;"><div class="avatar" style="background:var(--teal);">AS</div><div><div style="font-size:12.5px; font-weight:600;">Arjun Shah</div><div style="font-size:11px; color:var(--ink-faint);">Reviewer</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           REPOSITORY IMPORT
+           ============================================================ -->
+      <section class="page" id="page-import">
+        <div class="page-header">
+          <div>
+            <h1>Import a repository</h1>
+            <p class="sub">Connect a source, choose what to scan, and Traceline will start understanding your codebase.</p>
+          </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns: 1.7fr 1fr; align-items:start;">
+          <div class="stack" style="gap:18px;">
+
+            <div class="card">
+              <div class="panel-label" style="margin-bottom:14px;">Step 1 · Connect a source</div>
+              <div class="pill-toggle" id="sourceTabs" style="margin-bottom:20px;">
+                <button class="active" onclick="setSourceTab(this,'github')"><i class="fa-brands fa-github"></i> GitHub</button>
+                <button onclick="setSourceTab(this,'gitlab')"><i class="fa-brands fa-gitlab"></i> GitLab</button>
+                <button onclick="setSourceTab(this,'bitbucket')"><i class="fa-brands fa-bitbucket"></i> Bitbucket</button>
+                <button onclick="setSourceTab(this,'url')"><i class="fa-solid fa-link"></i> Paste URL</button>
+                <button onclick="setSourceTab(this,'zip')"><i class="fa-solid fa-file-zipper"></i> Upload ZIP</button>
+              </div>
+
+              <div id="sourcePane-github">
+                <div class="search-input-wrap" style="margin-bottom:16px;">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input class="input" placeholder="Filter repositories by name…" oninput="filterRepoList(this.value)">
+                </div>
+                <div class="stack" id="repoPickList" style="gap:8px;">
+                  <label class="gutter-row sev-low" style="cursor:default; opacity:.65;">
+                    <input type="checkbox" checked disabled style="width:17px;height:17px; accent-color:var(--ink-faint);">
+                    <div style="flex:1;"><b>checkout-service</b> <span class="tag" style="margin-left:8px;">TypeScript</span><div style="font-size:11.5px; color:var(--ink-faint); margin-top:3px;">Updated 2 hours ago · private</div></div>
+                    <span class="badge badge-neutral">Connected</span>
+                  </label>
+                  <label class="gutter-row sev-low" style="cursor:default; opacity:.65;">
+                    <input type="checkbox" checked disabled style="width:17px;height:17px; accent-color:var(--ink-faint);">
+                    <div style="flex:1;"><b>payments-service</b> <span class="tag" style="margin-left:8px;">Go</span><div style="font-size:11.5px; color:var(--ink-faint); margin-top:3px;">Updated 40 minutes ago · private</div></div>
+                    <span class="badge badge-neutral">Connected</span>
+                  </label>
+                  <label class="gutter-row sev-low" style="cursor:default; opacity:.65;">
+                    <input type="checkbox" checked disabled style="width:17px;height:17px; accent-color:var(--ink-faint);">
+                    <div style="flex:1;"><b>pricing-engine</b> <span class="tag" style="margin-left:8px;">Python</span><div style="font-size:11.5px; color:var(--ink-faint); margin-top:3px;">Updated 1 day ago · private</div></div>
+                    <span class="badge badge-neutral">Connected</span>
+                  </label>
+                  <label class="gutter-row sev-low" style="cursor:default; opacity:.65;">
+                    <input type="checkbox" checked disabled style="width:17px;height:17px; accent-color:var(--ink-faint);">
+                    <div style="flex:1;"><b>auth-service</b> <span class="tag" style="margin-left:8px;">TypeScript</span><div style="font-size:11.5px; color:var(--ink-faint); margin-top:3px;">Updated 3 days ago · private</div></div>
+                    <span class="badge badge-neutral">Connected</span>
+                  </label>
+                  <label class="gutter-row" style="border-color:var(--line);">
+                    <input type="checkbox" class="import-check" onchange="updateImportCount()" style="width:17px;height:17px; accent-color:var(--blue);">
+                    <div style="flex:1;"><b>notification-service</b> <span class="tag" style="margin-left:8px;">Node.js</span><div style="font-size:11.5px; color:var(--ink-faint); margin-top:3px;">Updated 2 days ago · private</div></div>
+                  </label>
+                  <label class="gutter-row" style="border-color:var(--line);">
+                    <input type="checkbox" class="import-check" onchange="updateImportCount()" style="width:17px;height:17px; accent-color:var(--blue);">
+                    <div style="flex:1;"><b>admin-portal</b> <span class="tag" style="margin-left:8px;">TypeScript</span><div style="font-size:11.5px; color:var(--ink-faint); margin-top:3px;">Updated 5 hours ago · public</div></div>
+                  </label>
+                </div>
+              </div>
+
+              <div id="sourcePane-other" class="hidden" style="padding:34px 10px; text-align:center; color:var(--ink-faint);">
+                <i class="fa-solid fa-plug" style="font-size:20px; margin-bottom:10px; display:block;"></i>
+                Connect this source from <a style="color:var(--blue); font-weight:600;" onclick="showPage('settings')">Settings → Integrations</a> to list its repositories here.
+              </div>
+            </div>
+
+          </div>
+
+          <div class="stack" style="gap:18px;">
+            <div class="card">
+              <div class="panel-label" style="margin-bottom:14px;">Step 2 · Scan settings</div>
+              <div class="stack" style="gap:10px; margin-bottom:18px;">
+                <label class="radio-card selected" id="scanQuick" onclick="setScanMode('quick')">
+                  <input type="radio" name="scanmode" checked>
+                  <div><b style="font-size:13.5px;">Quick scan</b><p style="font-size:12px; color:var(--ink-soft); margin-top:3px;">Surface-level check across recently changed files. Finishes in minutes.</p></div>
+                </label>
+                <label class="radio-card" id="scanDeep" onclick="setScanMode('deep')">
+                  <input type="radio" name="scanmode">
+                  <div><b style="font-size:13.5px;">Deep scan</b><p style="font-size:12px; color:var(--ink-soft); margin-top:3px;">Full repository analysis, including cross-file dependencies. Best for first imports.</p></div>
+                </label>
+              </div>
+              <div class="stack" style="gap:14px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                  <div><div style="font-size:13px; font-weight:600;">Continuous monitoring</div><div style="font-size:11.5px; color:var(--ink-faint);">Re-scan automatically on every push to the default branch.</div></div>
+                  <label class="toggle"><input type="checkbox" checked><span class="track"></span><span class="thumb"></span></label>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                  <div><div style="font-size:13px; font-weight:600;">Auto-open PRs</div><div style="font-size:11.5px; color:var(--ink-faint);">Open a pull request automatically for fixes above 90% confidence.</div></div>
+                  <label class="toggle"><input type="checkbox"><span class="track"></span><span class="thumb"></span></label>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="background:var(--code-bg); border-color:var(--code-line);">
+              <div style="color:var(--ink-on-dark); font-size:13px; margin-bottom:4px;">Ready to import</div>
+              <div style="color:var(--ink-on-dark-soft); font-size:12px; margin-bottom:16px;"><span id="importCount">0</span> repositories selected · quick scan</div>
+              <button class="btn btn-accent btn-block" id="importBtn" onclick="startImport()" disabled><i class="fa-solid fa-cloud-arrow-up"></i> Import repositories</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
